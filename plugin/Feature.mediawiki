@@ -1,0 +1,717 @@
+{{FleetCommander Integration Plugin|version=|ticket=TODO|author=Ab}}
+
+== Overview ==
+
+FleetCommander is a service to centrally manage Desktop environments. It
+includes a server to define desktop profiles and a client to apply profile
+information to the user's desktop session on a specified machine.
+
+This design document describes an integration of FleetCommander with FreeIPA.
+The integration is done two-fold:
+
+* FleetCommander management UI uses FreeIPA to store information about desktop
+  profiles
+* FleetCommander management UI allows to associate FreeIPA-provided users,
+  groups, hosts, and host groups with the desktop profiles by creating desktop
+  profile rules
+
+In addition, SSSD is extended to deliver desktop profiles and rules to
+the FreeIPA clients where FleetCommander client agent would apply them.
+
+== Use Cases ==
+As an administrator, I want to manage desktop profiles in a centralized way
+
+As an administrator, I want to use centrally defined users, groups, hosts and
+host groups to specify how desktop profiles should be applied.
+
+As an administrator, I want to make sure desktop profiles associated with a
+specific user or user group are downloaded and applied on a specific FreeIPA
+client according to the desktop profile rules defined in FreeIPA.
+
+== Design==
+
+=== FleetCommander overview ===
+[https://wiki.gnome.org/Projects/FleetCommander FleetCommander] consists on two components:
+
+* a web service integrated with Cockpit that serves the dynamic application
+  and the profile data to the network.
+
+* and a client side daemon that runs on every host of the network.
+
+Fleet Commander relies on libvirt and KVM to generate the profile data
+dynamically from a template VM running the same environment as the rest of the
+network. Once administrator performs needed modifications in a desktop
+environment, FleetCommander picks up all changes made to DConf and other
+recognized configured locations and creates a JSON-formatted specification
+('desktop profile').
+
+The desktop profile is then stored in a such way that FleetCommander agent can
+download it and apply on the client side when user logs in into a graphical
+environment.
+
+=== FreeIPA integration ===
+
+We consider using FreeIPA LDAP server to store FleetCommander desktop
+profiles. The profiles themselves are small as they represent only changes in
+configuration settings against a known desktop environment. FleetCommander
+packages the changes into JSON-formatted file. The size of the file is small;
+dozen kilobytes at most. The amount of desktop profiles is relatively low, as
+well, their change rate is small -- once desktop profile is defined by the
+administrators, it is expected that it will be read more often than written
+to.
+
+Given that FreeIPA already manages users, groups, hosts, and host groups, we
+also consider to store desktop profile rules in the FreeIPA LDAP server. A
+desktop profile rule is very similar to SELinux user mapping rules.
+
+While the implementation of FleetCommander's side of the feature is out
+of scope of the FreeIPA plugin, we describe full flow to help understanding it.
+
+Since FleetCommander runs as a plugin within Cockpit, it can use Kerberos
+credentials of Cockpit (HTTP/cockpit.server) to perform S4U2Self as the
+administrator and further use these credentials when talking FreeIPA JSON-RPC
+API. In this case Cockpit's host is expected to be enrolled into FreeIPA and
+HTTP service is created on the host. In this document from now on HTTP
+Kerberos service used by Cockpit is referred as the 'Cockpit service'.
+
+=== High Level Architecture ===
+
+==== Administration ====
+1. An administrator logs in into Cockpit and navigates to FleetCommander
+   management page.
+2. A new desktop profile is created. The changes are recorded by
+   FleetCommander into a JSON-formatted file.
+3. FleetCommander uses Cockpit service credentials to perform S4U2Self as the
+   user logged into Cockpit.
+4. Using newly obtained ticket, FleetCommander communicates to FreeIPA server
+   via JSON-RPC to manage the desktop profile and rules associated with the
+   profiles.
+
+==== Enforcement of the profiles ====
+
+1. SSSD child process downloads desktop profile rules associated with the host
+  from FreeIPA server and stores them in its own database. SSSD would use an
+  LDAP filter ''(&(objectclass=ipadeskprofilerule)(memberHost=my_fqdn_or_my_host_group)(memberUser=user_login_or_group))''
+  and will ignore HBAC rules for first implementation.
+2. Based on the profiles referenced in the rules, SSSD child will write
+  profile data into a predefined location ''/var/lib/sss/fleetcmd/username/profilename.json''
+  where it could be picked up by the FleetCommander agent daemon.
+3. When user logs on, logind issues a logon signal. The signal
+  is intercepted by the FleetCommander agent daemon.
+4. The agent daemon merges definitions of desktop profiles which apply to the
+  user and applies them to the desktop environment.
+
+''profilename.json'' file name is built using profile RDN and is prefixed by
+the priority of the profile rule using leading zeros. To ease handling of the
+files, SSSD may transform RDN value by removing certain characters used by the
+shell for globing purposes and by replacing spaces with underscores. Since the
+name of the file is only used to ensure ordering of the profiles when merging
+them, a lexicographical sort of names should be enough.
+
+Due to the fact that each desktop profile rule references a single desktop
+profile and resulting file names are only used for sorting of the profiles,
+replacing desktop profile name with a desktop profile rule name in the
+generated names does not create any issue.
+
+Example: For a profile rule 'Minimal Desktop For Guests' stored as
+''cn=Minimal desktop for guests,cn=rules,cn=desktop-profile,$SUFFIX''
+with a priority 100, SSSD would use a file name '000100_Minimal_desktop_for_guests.json'.
+
+
+=== Access Control ===
+
+From FreeIPA perspective there are three components of the access controls:
+
+1. Managing desktop profiles and desktop profile rules
+2. Reading desktop profile JSON-formatted data
+3. Reading general information about desktop profiles and desktop profile rules
+
+For managing desktop profiles and desktop profile rules, a set of permissions is added
+that can be further delegated via privileges and roles in FreeIPA. This set of
+permissions is generated automatically when the plugin is added to FreeIPA by
+''ipa-server-upgrade'' as part of managed permissions. The permissions are
+granted to the privilege named '''FleetCommander Desktop Profile Administrators'''.
+
+Reading desktop profile JSON-formatted data is limited to those who are
+defined in the desktop profile rules governing specific desktop profile. Host
+principal used by SSSD is allowed to read the profile data, as well as the
+user the profile is applied to. This is cannot be achieved with standard ACI
+mechanisms in 389-ds for subjects defined in one object and targets in another
+one. Instead, a JSON-formatted data attribute is pulled into the rule with the
+CoS plugin configuration and an ACI is added to the desktop profile rule that
+limits access to the attribute based on the membership defined in the desktop
+profile rule itself.
+
+General information about desktop profiles and desktop profile rules is
+readable to authenticated users.
+
+==== Compatibility to older FreeIPA versions ====
+
+The FleetCommander integration feature is designed to be compatible with
+FreeIPA 4.4.1+. The feature is delivered as a third-party plugin which
+requires special support from the FreeIPA core to allow addition of schema
+files. The support for this is planned to be added to FreeIPA 4.4.1+.
+
+== Implementation ==
+
+The FleetCommander integration feature is a third-party plugin for FreeIPA. It
+is designed to be installed as a separate package.
+
+The package provides:
+
+* '''schema file''': LDAP schema extension that defines '''ipaDeskprofile'''
+  and '''ipaDeskprofileRule''' object classes with corresponding
+  attributes. The LDAP attributes and object classes have OIDs in
+  the IANA-registered address space of 1.3.6.1.4.1.31640 which is
+  allocated to the author of this design document.
+* '''update file''': LDAP update file to define LDAP sub-tree used to store
+  desktop profiles and desktop profile rules: ''cn=desktop-profile,$SUFFIX''
+  together with the required access controls (ACIs).
+* '''plugin code''': written in Python and split into client and server parts.
+  Client part handles reading of the profile data from the specified file and
+  transforming it to base64 encoding. Server part implements desktop profile
+  and desktop profile rules' management, as well as definition of the default
+  managed permissions.
+
+There are no additional dependencies to what FreeIPA server packages already require.
+
+== Feature Management ==
+
+=== UI ===
+TODO: How the feature will be managed via the Web UI.
+
+=== CLI ===
+Overview of command line commands.
+
+{| class="wikitable"
+|-
+! Command
+! Arguments and options
+! Comments
+|-
+| deskprofile_add
+| name 
+| Profile name 
+|-
+| 
+| --addattr=Str('addattr*')
+| Add an attribute/value pair. Format is attr=value. The attribute must be part of the schema.
+|-
+| 
+| --all=Flag('all')
+| Retrieve and print all attributes from the server. Affects command output.
+|-
+| 
+| --desc=Str('description?')
+| Description
+|-
+| 
+| --data=Bytes('ipadeskdata')
+| JSON data for profile
+|-
+| 
+| --raw=Flag('raw')
+| Print entries as stored on the server. Only affects output format.
+|-
+| 
+| --setattr=Str('setattr*')
+| Set an attribute to a name/value pair. Format is attr=value. For multi-valued attributes, the command replaces the values already present.
+|-
+| 
+| --version=Str('version?')
+| Client version. Used to determine if server will accept request.
+|-
+| deskprofile_del
+| name 
+| Profile name 
+|-
+| 
+| --continue=Flag('continue')
+| Continuous mode: Don't stop on errors.
+|-
+| 
+| --version=Str('version?')
+| Client version. Used to determine if server will accept request.
+|-
+| deskprofile_find
+| criteria 
+| A string searched in all relevant object attributes 
+|-
+| 
+| --all=Flag('all')
+| Retrieve and print all attributes from the server. Affects command output.
+|-
+| 
+| --name=Str('cn?')
+| Profile name
+|-
+| 
+| --desc=Str('description?')
+| Description
+|-
+| 
+| --data=Bytes('ipadeskdata?')
+| JSON data for profile
+|-
+| 
+| --pkey_only=Flag('pkey_only?')
+| Results should contain primary key attribute only ("name")
+|-
+| 
+| --raw=Flag('raw')
+| Print entries as stored on the server. Only affects output format.
+|-
+| 
+| --sizelimit=Int('sizelimit?')
+| Maximum number of entries returned (0 is unlimited)
+|-
+| 
+| --timelimit=Int('timelimit?')
+| Time limit of search in seconds (0 is unlimited)
+|-
+| 
+| --version=Str('version?')
+| Client version. Used to determine if server will accept request.
+|-
+| deskprofile_mod
+| name 
+| Profile name 
+|-
+| 
+| --addattr=Str('addattr*')
+| Add an attribute/value pair. Format is attr=value. The attribute must be part of the schema.
+|-
+| 
+| --all=Flag('all')
+| Retrieve and print all attributes from the server. Affects command output.
+|-
+| 
+| --delattr=Str('delattr*')
+| Delete an attribute/value pair. The option will be evaluated last, after all sets and adds.
+|-
+| 
+| --desc=Str('description?')
+| Description
+|-
+| 
+| --data=Bytes('ipadeskdata?')
+| JSON data for profile
+|-
+| 
+| --raw=Flag('raw')
+| Print entries as stored on the server. Only affects output format.
+|-
+| 
+| --rename=Str('rename?')
+| Rename the FleetCommander Desktop Profile object
+|-
+| 
+| --rights=Flag('rights')
+| Display the access rights of this entry (requires --all). See ipa man page for details.
+|-
+| 
+| --setattr=Str('setattr*')
+| Set an attribute to a name/value pair. Format is attr=value. For multi-valued attributes, the command replaces the values already present.
+|-
+| 
+| --version=Str('version?')
+| Client version. Used to determine if server will accept request.
+|-
+| deskprofile_show
+| name 
+| Profile name 
+|-
+| 
+| --all=Flag('all')
+| Retrieve and print all attributes from the server. Affects command output.
+|-
+| 
+| --raw=Flag('raw')
+| Print entries as stored on the server. Only affects output format.
+|-
+| 
+| --rights=Flag('rights')
+| Display the access rights of this entry (requires --all). See ipa man page for details.
+|-
+| 
+| --version=Str('version?')
+| Client version. Used to determine if server will accept request.
+|-
+| deskprofilerule_add
+| name 
+| Rule name 
+|-
+| 
+| --addattr=Str('addattr*')
+| Add an attribute/value pair. Format is attr=value. The attribute must be part of the schema.
+|-
+| 
+| --all=Flag('all')
+| Retrieve and print all attributes from the server. Affects command output.
+|-
+| 
+| --desc=Str('description?')
+| Description
+|-
+| 
+| --hostcat=StrEnum('hostcategory?')
+| Host category the rule applies to
+|-
+| 
+| --prio=Int('ipadeskprofilepriority')
+| Priority for desktop profile associated with the rule
+|-
+| 
+| --profile=Str('ipadeskprofiletarget')
+| Desktop profile associated with the rule
+|-
+| 
+| --ipaenabledflag=Bool('ipaenabledflag?')
+| Enabled
+|-
+| 
+| --no_members=Flag('no_members')
+| Suppress processing of membership attributes.
+|-
+| 
+| --raw=Flag('raw')
+| Print entries as stored on the server. Only affects output format.
+|-
+| 
+| --hbacrule=Str('seealso?')
+| HBAC Rule that defines the users, groups and hostgroups
+|-
+| 
+| --setattr=Str('setattr*')
+| Set an attribute to a name/value pair. Format is attr=value. For multi-valued attributes, the command replaces the values already present.
+|-
+| 
+| --usercat=StrEnum('usercategory?')
+| User category the rule applies to
+|-
+| 
+| --version=Str('version?')
+| Client version. Used to determine if server will accept request.
+|-
+| deskprofilerule_add_host
+| name 
+| Rule name 
+|-
+| 
+| --all=Flag('all')
+| Retrieve and print all attributes from the server. Affects command output.
+|-
+| 
+| --hosts=Str('host*')
+| hosts to add
+|-
+| 
+| --hostgroups=Str('hostgroup*')
+| host groups to add
+|-
+| 
+| --no_members=Flag('no_members')
+| Suppress processing of membership attributes.
+|-
+| 
+| --raw=Flag('raw')
+| Print entries as stored on the server. Only affects output format.
+|-
+| 
+| --version=Str('version?')
+| Client version. Used to determine if server will accept request.
+|-
+| deskprofilerule_add_user
+| name 
+| Rule name 
+|-
+| 
+| --all=Flag('all')
+| Retrieve and print all attributes from the server. Affects command output.
+|-
+| 
+| --groups=Str('group*')
+| groups to add
+|-
+| 
+| --no_members=Flag('no_members')
+| Suppress processing of membership attributes.
+|-
+| 
+| --raw=Flag('raw')
+| Print entries as stored on the server. Only affects output format.
+|-
+| 
+| --users=Str('user*')
+| users to add
+|-
+| 
+| --version=Str('version?')
+| Client version. Used to determine if server will accept request.
+|-
+| deskprofilerule_del
+| name 
+| Rule name 
+|-
+| 
+| --continue=Flag('continue')
+| Continuous mode: Don't stop on errors.
+|-
+| 
+| --version=Str('version?')
+| Client version. Used to determine if server will accept request.
+|-
+| deskprofilerule_disable
+| name 
+| Rule name 
+|-
+| 
+| --version=Str('version?')
+| Client version. Used to determine if server will accept request.
+|-
+| deskprofilerule_enable
+| name 
+| Rule name 
+|-
+| 
+| --version=Str('version?')
+| Client version. Used to determine if server will accept request.
+|-
+| deskprofilerule_find
+| criteria 
+| A string searched in all relevant object attributes 
+|-
+| 
+| --all=Flag('all')
+| Retrieve and print all attributes from the server. Affects command output.
+|-
+| 
+| --name=Str('cn?')
+| Rule name
+|-
+| 
+| --desc=Str('description?')
+| Description
+|-
+| 
+| --hostcat=StrEnum('hostcategory?')
+| Host category the rule applies to
+|-
+| 
+| --prio=Int('ipadeskprofilepriority?')
+| Priority for desktop profile associated with the rule
+|-
+| 
+| --profile=Str('ipadeskprofiletarget?')
+| Desktop profile associated with the rule
+|-
+| 
+| --ipaenabledflag=Bool('ipaenabledflag?')
+| Enabled
+|-
+| 
+| --no_members=Flag('no_members')
+| Suppress processing of membership attributes.
+|-
+| 
+| --pkey_only=Flag('pkey_only?')
+| Results should contain primary key attribute only ("name")
+|-
+| 
+| --raw=Flag('raw')
+| Print entries as stored on the server. Only affects output format.
+|-
+| 
+| --hbacrule=Str('seealso?')
+| HBAC Rule that defines the users, groups and hostgroups
+|-
+| 
+| --sizelimit=Int('sizelimit?')
+| Maximum number of entries returned (0 is unlimited)
+|-
+| 
+| --timelimit=Int('timelimit?')
+| Time limit of search in seconds (0 is unlimited)
+|-
+| 
+| --usercat=StrEnum('usercategory?')
+| User category the rule applies to
+|-
+| 
+| --version=Str('version?')
+| Client version. Used to determine if server will accept request.
+|-
+| deskprofilerule_mod
+| name 
+| Rule name 
+|-
+| 
+| --addattr=Str('addattr*')
+| Add an attribute/value pair. Format is attr=value. The attribute must be part of the schema.
+|-
+| 
+| --all=Flag('all')
+| Retrieve and print all attributes from the server. Affects command output.
+|-
+| 
+| --delattr=Str('delattr*')
+| Delete an attribute/value pair. The option will be evaluated last, after all sets and adds.
+|-
+| 
+| --desc=Str('description?')
+| Description
+|-
+| 
+| --hostcat=StrEnum('hostcategory?')
+| Host category the rule applies to
+|-
+| 
+| --prio=Int('ipadeskprofilepriority?')
+| Priority for desktop profile associated with the rule
+|-
+| 
+| --profile=Str('ipadeskprofiletarget?')
+| Desktop profile associated with the rule
+|-
+| 
+| --ipaenabledflag=Bool('ipaenabledflag?')
+| Enabled
+|-
+| 
+| --no_members=Flag('no_members')
+| Suppress processing of membership attributes.
+|-
+| 
+| --raw=Flag('raw')
+| Print entries as stored on the server. Only affects output format.
+|-
+| 
+| --rename=Str('rename?')
+| Rename the FleetCommander Desktop Profile Rule Map object
+|-
+| 
+| --rights=Flag('rights')
+| Display the access rights of this entry (requires --all). See ipa man page for details.
+|-
+| 
+| --hbacrule=Str('seealso?')
+| HBAC Rule that defines the users, groups and hostgroups
+|-
+| 
+| --setattr=Str('setattr*')
+| Set an attribute to a name/value pair. Format is attr=value. For multi-valued attributes, the command replaces the values already present.
+|-
+| 
+| --usercat=StrEnum('usercategory?')
+| User category the rule applies to
+|-
+| 
+| --version=Str('version?')
+| Client version. Used to determine if server will accept request.
+|-
+| deskprofilerule_remove_host
+| name 
+| Rule name 
+|-
+| 
+| --all=Flag('all')
+| Retrieve and print all attributes from the server. Affects command output.
+|-
+| 
+| --hosts=Str('host*')
+| hosts to remove
+|-
+| 
+| --hostgroups=Str('hostgroup*')
+| host groups to remove
+|-
+| 
+| --no_members=Flag('no_members')
+| Suppress processing of membership attributes.
+|-
+| 
+| --raw=Flag('raw')
+| Print entries as stored on the server. Only affects output format.
+|-
+| 
+| --version=Str('version?')
+| Client version. Used to determine if server will accept request.
+|-
+| deskprofilerule_remove_user
+| name 
+| Rule name 
+|-
+| 
+| --all=Flag('all')
+| Retrieve and print all attributes from the server. Affects command output.
+|-
+| 
+| --groups=Str('group*')
+| groups to remove
+|-
+| 
+| --no_members=Flag('no_members')
+| Suppress processing of membership attributes.
+|-
+| 
+| --raw=Flag('raw')
+| Print entries as stored on the server. Only affects output format.
+|-
+| 
+| --users=Str('user*')
+| users to remove
+|-
+| 
+| --version=Str('version?')
+| Client version. Used to determine if server will accept request.
+|-
+| deskprofilerule_show
+| name 
+| Rule name 
+|-
+| 
+| --all=Flag('all')
+| Retrieve and print all attributes from the server. Affects command output.
+|-
+| 
+| --no_members=Flag('no_members')
+| Suppress processing of membership attributes.
+|-
+| 
+| --raw=Flag('raw')
+| Print entries as stored on the server. Only affects output format.
+|-
+| 
+| --rights=Flag('rights')
+| Display the access rights of this entry (requires --all). See ipa man page for details.
+|-
+| 
+| --version=Str('version?')
+| Client version. Used to determine if server will accept request.
+|-
+|}
+
+=== Configuration ===
+
+Once the FleetCommander plugin package is installed and ipa-server-upgrade is
+ran, no additional configuration is needed to start using API provided by the plugin.
+IPA CLI will be available immediately.
+
+For integration with FleetCommander Cockpit management interface, following should be done:
+
+1. Cockpit service (HTTP/cockpit.server) should be created for the machine
+   where FleetCommander Cockpit plugin is installed.
+2. The service principal needs to be marked as allowed to delegate user
+   credentials to with the help of --ok-as-delegate option to service-add
+   or service-mod commands.
+
+== How to Use ==
+TODO:
+<!--Target audience:  testers, documentation writers, system integrators, solution architects, other developers,... -->
+Easy to follow instructions how to use the new feature according to the [[#Use_Cases|use cases]] described above. FreeIPA user needs to be able to follow the steps and demonstrate the new features.
+
+The chapter may be divided in sub-sections per [[#Use_Cases|Use Case]].
+
+== Test Plan ==
+TODO:
+Test scenarios that will be transformed to test cases for FreeIPA [[V3/Integration_testing|Continuous Integration]] during implementation or review phase. This can be also link to [https://git.fedorahosted.org/cgit/freeipa.git/ source in cgit] with the test, if appropriate.

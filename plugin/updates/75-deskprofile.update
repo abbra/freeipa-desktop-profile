@@ -1,0 +1,26 @@
+# Sub-tree to store desktop profiles
+dn: cn=desktop-profile,$SUFFIX
+default: objectClass: top
+default: objectClass: nsContainer
+default: cn: desktop-profile
+
+# Sub-tree to store desktop profile rules
+# Note that the container also serves as a CoS definition
+# We pull in ipaDeskData attribute from the referenced desktop profile
+# This allows us to set access control to the ipaDeskData attribute
+# in the entry rather than to the desktop profile entry.
+# The latter is not possible in 389-ds for dynamic targets
+# while the former allows us to have static definition
+# for the ACI to read ipaDeskData attribute by hosts and users
+# who are members of the rule
+dn: cn=rules,cn=desktop-profile,$SUFFIX
+default: objectClass: top
+default: objectClass: nsContainer
+default: objectClass: ldapSubEntry
+default: objectClass: cosSuperDefinition
+default: objectClass: cosIndirectDefinition
+default: cosIndirectSpecifier: ipaDeskProfileTarget
+default: cosAttribute: ipaDeskData override
+default: cn: rules
+default: aci: (targetfilter="(objectClass=ipaDeskProfileRule)")(targetattr="ipaDeskData")(version 3.0; acl "Members can read desktop profile data from the rule"; allow(read) userattr="memberHost#GROUPDN" or userattr="memberUser#USERDN" or userattr="memberHost#USERDN" or userattr="memberUser#GROUPDN";)
+
