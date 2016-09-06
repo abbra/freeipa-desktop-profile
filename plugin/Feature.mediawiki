@@ -9,11 +9,8 @@ information to the user's desktop session on a specified machine.
 This design document describes an integration of FleetCommander with FreeIPA.
 The integration is done two-fold:
 
-* FleetCommander management UI uses FreeIPA to store information about desktop
-  profiles
-* FleetCommander management UI allows to associate FreeIPA-provided users,
-  groups, hosts, and host groups with the desktop profiles by creating desktop
-  profile rules
+* FleetCommander management UI uses FreeIPA to store information about desktop profiles
+* FleetCommander management UI allows to associate FreeIPA-provided users, groups, hosts, and host groups with the desktop profiles by creating desktop profile rules
 
 In addition, SSSD is extended to deliver desktop profiles and rules to
 the FreeIPA clients where FleetCommander client agent would apply them.
@@ -33,9 +30,7 @@ client according to the desktop profile rules defined in FreeIPA.
 === FleetCommander overview ===
 [https://wiki.gnome.org/Projects/FleetCommander FleetCommander] consists on two components:
 
-* a web service integrated with Cockpit that serves the dynamic application
-  and the profile data to the network.
-
+* a web service integrated with Cockpit that serves the dynamic application and the profile data to the network.
 * and a client side daemon that runs on every host of the network.
 
 Fleet Commander relies on libvirt and KVM to generate the profile data
@@ -77,29 +72,17 @@ Kerberos service used by Cockpit is referred as the 'Cockpit service'.
 === High Level Architecture ===
 
 ==== Administration ====
-1. An administrator logs in into Cockpit and navigates to FleetCommander
-   management page.
-2. A new desktop profile is created. The changes are recorded by
-   FleetCommander into a JSON-formatted file.
-3. FleetCommander uses Cockpit service credentials to perform S4U2Self as the
-   user logged into Cockpit.
-4. Using newly obtained ticket, FleetCommander communicates to FreeIPA server
-   via JSON-RPC to manage the desktop profile and rules associated with the
-   profiles.
+# An administrator logs in into Cockpit and navigates to FleetCommander management page.
+# A new desktop profile is created. The changes are recorded by FleetCommander into a JSON-formatted file.
+# FleetCommander uses Cockpit service credentials to perform S4U2Self as the user logged into Cockpit.
+# Using newly obtained ticket, FleetCommander communicates to FreeIPA server via JSON-RPC to manage the desktop profile and rules associated with the profiles.
 
 ==== Enforcement of the profiles ====
 
-1. SSSD child process downloads desktop profile rules associated with the host
-  from FreeIPA server and stores them in its own database. SSSD would use an
-  LDAP filter ''(&(objectclass=ipadeskprofilerule)(memberHost=my_fqdn_or_my_host_group)(memberUser=user_login_or_group))''
-  and will ignore HBAC rules for first implementation.
-2. Based on the profiles referenced in the rules, SSSD child will write
-  profile data into a predefined location ''/var/lib/sss/fleetcmd/username/profilename.json''
-  where it could be picked up by the FleetCommander agent daemon.
-3. When user logs on, logind issues a logon signal. The signal
-  is intercepted by the FleetCommander agent daemon.
-4. The agent daemon merges definitions of desktop profiles which apply to the
-  user and applies them to the desktop environment.
+# SSSD child process downloads desktop profile rules associated with the host from FreeIPA server and stores them in its own database. SSSD would use an LDAP filter ''(&(objectclass=ipadeskprofilerule)(memberHost=my_fqdn_or_my_host_group)(memberUser=user_login_or_group))''  and will ignore HBAC rules for first implementation.
+# Based on the profiles referenced in the rules, SSSD child will write profile data into a predefined location ''/var/lib/sss/fleetcmd/username/profilename.json'' where it could be picked up by the FleetCommander agent daemon.
+# When user logs on, logind issues a logon signal. The signal is intercepted by the FleetCommander agent daemon.
+# The agent daemon merges definitions of desktop profiles which apply to the user and applies them to the desktop environment.
 
 ''profilename.json'' file name is built using profile RDN and is prefixed by
 the priority of the profile rule using leading zeros. To ease handling of the
@@ -122,9 +105,9 @@ with a priority 100, SSSD would use a file name '000100_Minimal_desktop_for_gues
 
 From FreeIPA perspective there are three components of the access controls:
 
-1. Managing desktop profiles and desktop profile rules
-2. Reading desktop profile JSON-formatted data
-3. Reading general information about desktop profiles and desktop profile rules
+# Managing desktop profiles and desktop profile rules
+# Reading desktop profile JSON-formatted data
+# Reading general information about desktop profiles and desktop profile rules
 
 For managing desktop profiles and desktop profile rules, a set of permissions is added
 that can be further delegated via privileges and roles in FreeIPA. This set of
@@ -159,19 +142,9 @@ is designed to be installed as a separate package.
 
 The package provides:
 
-* '''schema file''': LDAP schema extension that defines '''ipaDeskprofile'''
-  and '''ipaDeskprofileRule''' object classes with corresponding
-  attributes. The LDAP attributes and object classes have OIDs in
-  the IANA-registered address space of 1.3.6.1.4.1.31640 which is
-  allocated to the author of this design document.
-* '''update file''': LDAP update file to define LDAP sub-tree used to store
-  desktop profiles and desktop profile rules: ''cn=desktop-profile,$SUFFIX''
-  together with the required access controls (ACIs).
-* '''plugin code''': written in Python and split into client and server parts.
-  Client part handles reading of the profile data from the specified file and
-  transforming it to base64 encoding. Server part implements desktop profile
-  and desktop profile rules' management, as well as definition of the default
-  managed permissions.
+* '''schema file''': LDAP schema extension that defines '''ipaDeskprofile''' and '''ipaDeskprofileRule''' object classes with corresponding attributes. The LDAP attributes and object classes have OIDs in the IANA-registered address space of 1.3.6.1.4.1.31640 which is allocated to the author of this design document.
+* '''update file''': LDAP update file to define LDAP sub-tree used to store desktop profiles and desktop profile rules: ''cn=desktop-profile,$SUFFIX'' together with the required access controls (ACIs).
+* '''plugin code''': written in Python and split into client and server parts. Client part handles reading of the profile data from the specified file and transforming it to base64 encoding. Server part implements desktop profile and desktop profile rules' management, as well as definition of the default managed permissions.
 
 There are no additional dependencies to what FreeIPA server packages already require.
 
@@ -699,11 +672,8 @@ IPA CLI will be available immediately.
 
 For integration with FleetCommander Cockpit management interface, following should be done:
 
-1. Cockpit service (HTTP/cockpit.server) should be created for the machine
-   where FleetCommander Cockpit plugin is installed.
-2. The service principal needs to be marked as allowed to delegate user
-   credentials to with the help of --ok-as-delegate option to service-add
-   or service-mod commands.
+# Cockpit service (HTTP/cockpit.server) should be created for the machine where FleetCommander Cockpit plugin is installed.
+# The service principal needs to be marked as allowed to delegate user credentials to with the help of --ok-as-delegate option to service-add or service-mod commands.
 
 == How to Use ==
 TODO:
