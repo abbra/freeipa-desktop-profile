@@ -7,7 +7,7 @@ Summary:        FleetCommander integration with FreeIPA
 
 License:        GPL
 URL:            https://github.com/abbra/freeipa-desktop-profile
-Source0:        freeipa-desktop-profile-%{version}.tar.bz2
+Source0:        freeipa-desktop-profile-%{version}.tar.gz
 
 BuildRequires:  python2-devel
 Requires:       freeipa-server-common >= 4.4.1
