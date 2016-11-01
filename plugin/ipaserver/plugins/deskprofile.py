@@ -393,11 +393,9 @@ class deskprofilerule(LDAPObject):
                     self.api.Object['deskprofile'].object_class,
                     [''],
                     DN(self.api.Object['deskprofile'].container_dn, api.env.basedn))
-                seealso = entry_attrs.dn
+                return entry_attrs.dn
             except errors.NotFound:
                 raise errors.NotFound(reason=_('Desktop profile %(rule)s not found') % dict(rule=profile))
-
-        return profile
 
     def _convert_profile(self, ldap, entry_attrs, **options):
         """
