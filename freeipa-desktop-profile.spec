@@ -2,7 +2,7 @@
 
 Name:           freeipa-desktop-profile
 Version:        0.0.1 
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        FleetCommander integration with FreeIPA
 
 License:        GPL
@@ -37,6 +37,24 @@ rm -rf $RPM_BUILD_ROOT
 %__cp plugin/updates/75-deskprofile.update %buildroot/%_datadir/ipa/updates 
 #%__cp plugin/ui/deskprofile.js %buildroot/%_datadir/ipa/ui/js/plugins/deskprofile
 
+%posttrans
+python2 -c "import sys; from ipaserver.install import installutils; sys.exit(0 if installutils.is_ipa_configured() else 1);" > /dev/null 2>&1
+
+if [ $? -eq 0 ]; then
+    # This must be run in posttrans so that updates from previous
+    # execution that may no longer be shipped are not applied.
+    /usr/sbin/ipa-server-upgrade --quiet >/dev/null || :
+
+    # Restart IPA processes. This must be also run in postrans so that plugins
+    # and software is in consistent state
+    # NOTE: systemd specific section
+
+    /bin/systemctl is-enabled ipa.service >/dev/null 2>&1
+    if [  $? -eq 0 ]; then
+        /bin/systemctl restart ipa.service >/dev/null 2>&1 || :
+    fi
+fi
+
 %files
 %license COPYING
 %doc plugin/Feature.mediawiki
@@ -47,5 +65,8 @@ rm -rf $RPM_BUILD_ROOT
 #%_datadir/ipa/ui/js/plugins/deskprofile/*
 
 %changelog
+* Tue Nov  1 2016 Fabiano Fidêncio <fidencio@redhat.com> 0.0.1-2
+- Use the same posttrans method used by FreeIPA
+
 * Mon Sep  5 2016 Alexander Bokovoy <abokovoy@redhat.com> 0.0.1-1
 - Initial release
