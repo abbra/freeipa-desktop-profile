@@ -1,8 +1,8 @@
 %global debug_package %{nil}
 
 Name:           freeipa-desktop-profile
-Version:        0.0.1 
-Release:        2%{?dist}
+Version:        0.0.2
+Release:        1%{?dist}
 Summary:        FleetCommander integration with FreeIPA
 
 License:        GPL
@@ -65,6 +65,9 @@ fi
 #%_datadir/ipa/ui/js/plugins/deskprofile/*
 
 %changelog
+* Tue Nov  2 2016 Alexander Bokovoy <abokovoy@redhat.com> 0.0.2-1
+- New release
+
 * Tue Nov  1 2016 Fabiano Fidêncio <fidencio@redhat.com> 0.0.1-2
 - Use the same posttrans method used by FreeIPA
 
