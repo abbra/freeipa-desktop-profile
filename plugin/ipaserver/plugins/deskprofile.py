@@ -82,6 +82,35 @@ Display the properties of a desktop profile:
  Remove a profile:
    ipa deskprofile-del "Visual Design"
 
+ To define global policy on how profile apply:
+   ipa deskprofileconfig-mod --priority=NUMBER
+
+ Where NUMBER is 1..24 according to the following table:
+  1 = user, group, host, hostgroup
+  2 = user, group, hostgroup, host
+  3 = user, host, group, hostgroup
+  4 = user, host, hostgroup, group
+  5 = user, hostgroup, group, host
+  6 = user, hostgroup, host, group
+  7 = group, user, host, hostgroup
+  8 = group, user, hostgroup, host
+  9 = group, host, user, hostgroup
+ 10 = group, host, hostgroup, user
+ 11 = group, hostgroup, user, host
+ 12 = group, hostgroup, host, user
+ 13 = host, user, group, hostgroup
+ 14 = host, user, hostgroup, group
+ 15 = host, group, user, hostgroup
+ 16 = host, group, hostgroup, user
+ 17 = host, hostgroup, user, group
+ 18 = host, hostgroup, group, user
+ 19 = hostgroup, user, group, host
+ 20 = hostgroup, user, host, group
+ 21 = hostgroup, group, user, host
+ 22 = hostgroup, group, host, user
+ 23 = hostgroup, host, user, group
+ 24 = hostgroup, host, group, user
+
 """)
 
 register = Registry()
@@ -686,4 +715,64 @@ class deskprofilerule_remove_host(LDAPRemoveMember):
 
     member_attributes = ['memberhost']
     member_count_out = ('%i object removed.', '%i objects removed.')
+
+@register()
+class deskprofileconfig(LDAPObject):
+    """
+    Global configuration for desktop profiles
+    """
+    object_name = _('configuration options')
+    default_attributes = [
+        'ipadeskprofilepriority',
+    ]
+    permission_filter_objectclasses = ['ipaguiconfig']
+    managed_permissions = {
+        'System: Read FleetCommander Desktop Profile Configuration': {
+            'ipapermbindruletype': 'all',
+            'ipapermright': {'read', 'search', 'compare'},
+            'ipapermdefaultattr': {
+                'cn', 'ipadeskprofilepriority',
+                'objectclass',
+            },
+        },
+        'System: Modify FleetCommander Desktop Profile Configuration': {
+            'ipapermbindruletype': 'permission',
+            'ipapermright': {'write'},
+            'ipapermdefaultattr': {
+                'ipadeskprofilepriority',
+            },
+            'default_privileges': {'FleetCommander Desktop Profile Administrators'},
+        },
+    }
+
+    label = _('Desktop Profile Global Configuration')
+    label_singular = _('Dekstop Profile Global Configuration')
+
+    takes_params = (
+        Int('ipadeskprofilepriority',
+            cli_name='priority',
+            label=_('Priority of profile application'),
+            minvalue=1,
+            maxvalue=24,
+        ),
+    )
+
+    # Inject constants into the api.env before it is locked down
+    def _on_finalize(self):
+        self.env._merge(**dict(PLUGIN_CONFIG))
+        self.container_dn = self.env.container_deskprofile
+        super(deskprofile, self)._on_finalize()
+
+    def get_dn(self, *keys, **kwargs):
+        return DN(self.container_dn, api.env.basedn)
+
+
+@register()
+class deskprofileconfig_mod(LDAPUpdate):
+    __doc__ = _('Modify Desktop Profile configuration options.')
+
+
+@register()
+class deskprofileconfig_show(LDAPRetrieve):
+    __doc__ = _('Show Desktop Profile configuration options.')
 
