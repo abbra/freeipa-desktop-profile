@@ -134,7 +134,7 @@ class deskprofile(LDAPObject):
     object_class = ['ipaassociation', 'ipadeskprofile']
     permission_filter_objectclasses = ['ipadeskprofile']
     default_attributes = [
-        'cn', 'ipadeskdata'
+        'cn', 'ipadeskdata',
         'description', 
     ]
     search_display_attributes = [
