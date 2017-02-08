@@ -108,6 +108,9 @@ class deskprofile(LDAPObject):
         'cn', 'ipadeskdata'
         'description', 
     ]
+    search_display_attributes = [
+        'cn', 'description',
+    ]
     uuid_attribute = 'ipauniqueid'
     rdn_is_primary_key = True
 
