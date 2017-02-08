@@ -1,7 +1,7 @@
 %global debug_package %{nil}
 
 Name:           freeipa-desktop-profile
-Version:        0.0.2
+Version:        0.0.3
 Release:        1%{?dist}
 Summary:        FleetCommander integration with FreeIPA
 
@@ -65,6 +65,10 @@ fi
 #%_datadir/ipa/ui/js/plugins/deskprofile/*
 
 %changelog
+* Wed Feb  8 2017 Alexander Bokovoy <abokovoy@redhat.com> 0.0.3-1
+- New release
+- Added global desktop profile policy
+
 * Tue Nov  2 2016 Alexander Bokovoy <abokovoy@redhat.com> 0.0.2-1
 - New release
 
