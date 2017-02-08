@@ -761,7 +761,7 @@ class deskprofileconfig(LDAPObject):
     def _on_finalize(self):
         self.env._merge(**dict(PLUGIN_CONFIG))
         self.container_dn = self.env.container_deskprofile
-        super(deskprofile, self)._on_finalize()
+        super(deskprofileconfig, self)._on_finalize()
 
     def get_dn(self, *keys, **kwargs):
         return DN(self.container_dn, api.env.basedn)

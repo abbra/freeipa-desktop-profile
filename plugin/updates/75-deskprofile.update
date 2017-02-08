@@ -2,9 +2,9 @@
 dn: cn=desktop-profile,$SUFFIX
 default: objectClass: top
 default: objectClass: nsContainer
-default: objectClass: ipaDesktopProfileConfig
+default: objectClass: ipaDeskProfileConfig
 default: cn: desktop-profile
-default: ipaDesktopProfilePriority: 1
+default: ipaDeskProfilePriority: 1
 
 # Sub-tree to store desktop profile rules
 # Note that the container also serves as a CoS definition
