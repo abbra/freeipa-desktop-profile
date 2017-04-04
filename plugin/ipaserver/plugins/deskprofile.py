@@ -725,7 +725,7 @@ class deskprofileconfig(LDAPObject):
     default_attributes = [
         'ipadeskprofilepriority',
     ]
-    permission_filter_objectclasses = ['ipaguiconfig']
+    permission_filter_objectclasses = ['ipadeskprofileconfig']
     managed_permissions = {
         'System: Read FleetCommander Desktop Profile Configuration': {
             'ipapermbindruletype': 'all',
