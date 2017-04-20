@@ -746,7 +746,7 @@ class deskprofileconfig(LDAPObject):
     }
 
     label = _('Desktop Profile Global Configuration')
-    label_singular = _('Dekstop Profile Global Configuration')
+    label_singular = _('Desktop Profile Global Configuration')
 
     takes_params = (
         Int('ipadeskprofilepriority',
