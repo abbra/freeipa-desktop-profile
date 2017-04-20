@@ -142,7 +142,7 @@ is designed to be installed as a separate package.
 
 The package provides:
 
-* '''schema file''': LDAP schema extension that defines '''ipaDeskprofile''' and '''ipaDeskprofileRule''' object classes with corresponding attributes. The LDAP attributes and object classes have OIDs in the IANA-registered address space of 1.3.6.1.4.1.31640 which is allocated to the author of this design document.
+* '''schema file''': LDAP schema extension that defines '''ipaDeskprofile''', '''ipaDeskprofileRule''' and '''ipaDeskprofileConfig''' object classes with corresponding attributes. The LDAP attributes and object classes have OIDs in the IANA-registered address space of 1.3.6.1.4.1.31640 which is allocated to the author of this design document.
 * '''update file''': LDAP update file to define LDAP sub-tree used to store desktop profiles and desktop profile rules: ''cn=desktop-profile,$SUFFIX'' together with the required access controls (ACIs).
 * '''plugin code''': written in Python and split into client and server parts. Client part handles reading of the profile data from the specified file and transforming it to base64 encoding. Server part implements desktop profile and desktop profile rules' management, as well as definition of the default managed permissions.
 
@@ -161,6 +161,38 @@ Overview of command line commands.
 ! Command
 ! Arguments and options
 ! Comments
+|-
+| deskprofileconfig
+| priority
+| Global policy on how the profile should be applied
+|-
+| 
+| --priority=Int('ipadeskprofilepriority')
+| An integer from 1..24 that defines a policy according to the following table:
+|  1 = user, group, host, hostgroup
+|  2 = user, group, hostgroup, host
+|  3 = user, host, group, hostgroup
+|  4 = user, host, hostgroup, group
+|  5 = user, hostgroup, group, host
+|  6 = user, hostgroup, host, group
+|  7 = group, user, host, hostgroup
+|  8 = group, user, hostgroup, host
+|  9 = group, host, user, hostgroup
+| 10 = group, host, hostgroup, user
+| 11 = group, hostgroup, user, host
+| 12 = group, hostgroup, host, user
+| 13 = host, user, group, hostgroup
+| 14 = host, user, hostgroup, group
+| 15 = host, group, user, hostgroup
+| 16 = host, group, hostgroup, user
+| 17 = host, hostgroup, user, group
+| 18 = host, hostgroup, group, user
+| 19 = hostgroup, user, group, host
+| 20 = hostgroup, user, host, group
+| 21 = hostgroup, group, user, host
+| 22 = hostgroup, group, host, user
+| 23 = hostgroup, host, user, group
+| 24 = hostgroup, host, group, user
 |-
 | deskprofile_add
 | name 
