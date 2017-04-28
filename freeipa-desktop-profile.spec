@@ -1,7 +1,7 @@
 %global debug_package %{nil}
 
 Name:           freeipa-desktop-profile
-Version:        0.0.4
+Version:        0.0.5
 Release:        1%{?dist}
 Summary:        FleetCommander integration with FreeIPA
 
