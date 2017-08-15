@@ -18,11 +18,14 @@ default: ipaDeskProfilePriority: 1
 dn: cn=rules,cn=desktop-profile,$SUFFIX
 default: objectClass: top
 default: objectClass: nsContainer
+default: cn: rules
+default: aci: (targetfilter="(objectClass=ipaDeskProfileRule)")(targetattr="*")(version 3.0; acl "Members can read desktop profile data from the rule"; allow(read,search,compare) userattr="memberHost#GROUPDN" or userattr="memberUser#USERDN" or userattr="memberHost#USERDN" or userattr="memberUser#GROUPDN";)
+default: aci: (targetfilter="(&(objectClass=ipaDeskProfileRule)(|(hostCategory=all)(userCategory=all)))")(targetattr="*")(version 3.0; acl "Category all rules can be read by all authenticated users"; allow(read,search,compare) userdn="ldap:///all";)
+
+dn: cn=cosDesktopProfile,cn=rules,cn=desktop-profile,$SUFFIX
 default: objectClass: ldapSubEntry
 default: objectClass: cosSuperDefinition
 default: objectClass: cosIndirectDefinition
 default: cosIndirectSpecifier: ipaDeskProfileTarget
 default: cosAttribute: ipaDeskData override
-default: cn: rules
-default: aci: (targetfilter="(objectClass=ipaDeskProfileRule)")(targetattr="ipaDeskData")(version 3.0; acl "Members can read desktop profile data from the rule"; allow(read) userattr="memberHost#GROUPDN" or userattr="memberUser#USERDN" or userattr="memberHost#USERDN" or userattr="memberUser#GROUPDN";)
 
