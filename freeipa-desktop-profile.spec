@@ -1,7 +1,13 @@
 %global debug_package %{nil}
+%global plugin_name desktop-profile
 
-Name:           freeipa-desktop-profile
-Version:        0.0.5
+%global ipa_python2_sitelib %{python2_sitelib}
+%if 0%{?fedora} > 26 || 0%{?rhel} > 7
+%global ipa_python3_sitelib %{python3_sitelib}
+%endif
+
+Name:           freeipa-%{plugin_name}
+Version:        0.0.6
 Release:        1%{?dist}
 Summary:        FleetCommander integration with FreeIPA
 
@@ -9,13 +15,72 @@ License:        GPL
 URL:            https://github.com/abbra/freeipa-desktop-profile
 Source0:        freeipa-desktop-profile-%{version}.tar.gz
 
+%if 0%{?fedora} > 26 || 0%{?rhel} > 7
+BuildRequires: python3-devel
+BuildRequires: python3-ipaserver >= 4.6.0
+%endif
 BuildRequires:  python2-devel
-Requires:       freeipa-server-common >= 4.4.1
-Requires:       python2-ipaserver >= 4.4.1
+BuildRequires:  python2-ipaserver >= 4.4.1
+
+Requires:       ipa-server-common >= 4.4.1
+
+# In Fedora 27 we have FreeIPA using Python 3, enforce that
+%if 0%{?fedora} > 26 || 0%{?rhel} > 7
+Requires(post): python3-ipa-%{plugin_name}-server
+Requires: python3-ipa-%{plugin_name}-server
+Requires: python3-ipa-%{plugin_name}-client
+%else
+Requires(post): python2-ipa-%{plugin_name}-server
+Requires: python2-ipa-%{plugin_name}-server
+Requires: python2-ipa-%{plugin_name}-client
+%endif
 
 %description
 A module for FreeIPA to allow managing desktop profiles defined
 by the FleetCommander.
+
+%package -n python2-ipa-%{plugin_name}-server
+Summary: Server side of FleetCommander integration with FreeIPA for Python 2
+License:        GPL
+Requires: python2-ipaserver
+
+%description  -n python2-ipa-%{plugin_name}-server
+A module for FreeIPA to allow managing desktop profiles defined
+by the FleetCommander. This package adds server-side support for Python 2
+version of FreeIPA
+
+%package -n python2-ipa-%{plugin_name}-client
+License:        GPL
+Summary: Client side of FleetCommander integration with FreeIPA for Python 2
+Requires: python2-ipaclient
+
+%description  -n python2-ipa-%{plugin_name}-client
+A module for FreeIPA to allow managing desktop profiles defined
+by the FleetCommander. This package adds client-side support for Python 2
+version of FreeIPA
+
+%if 0%{?fedora} > 26 || 0%{?rhel} > 7
+%package -n python3-ipa-%{plugin_name}-server
+Summary: Server side of FleetCommander integration with FreeIPA for Python 3
+License:        GPL
+Requires: python3-ipaserver
+
+%description  -n python2-ipa-%{plugin_name}-server
+A module for FreeIPA to allow managing desktop profiles defined
+by the FleetCommander. This package adds server-side support for Python 3
+version of FreeIPA
+
+%package -n python3-ipa-%{plugin_name}-client
+License:        GPL
+Summary: Client side of FleetCommander integration with FreeIPA for Python 3
+Requires: python3-ipaclient
+
+%description  -n python2-ipa-%{plugin_name}-server
+A module for FreeIPA to allow managing desktop profiles defined
+by the FleetCommander. This package adds client-side support for Python 3
+version of FreeIPA
+
+%endif
 
 %prep
 %autosetup
@@ -25,20 +90,48 @@ touch debugfiles.list
 
 %install
 rm -rf $RPM_BUILD_ROOT
-%__mkdir_p %buildroot/%{python2_sitelib}/ipaclient/plugins
-%__mkdir_p %buildroot/%{python2_sitelib}/ipaserver/plugins
+%__mkdir_p %buildroot/%{_sysconfdir}/ipa
 %__mkdir_p %buildroot/%_datadir/ipa/schema.d
 %__mkdir_p %buildroot/%_datadir/ipa/updates
 #%__mkdir_p %buildroot/%_datadir/ipa/ui/js/plugins/deskprofile
 
-%__cp plugin/ipaclient/plugins/deskprofile.py %buildroot/%{python2_sitelib}/ipaclient/plugins
-%__cp plugin/ipaserver/plugins/deskprofile.py %buildroot/%{python2_sitelib}/ipaserver/plugins
-%__cp plugin/schema.d/75-deskprofile.ldif %buildroot/%_datadir/ipa/schema.d 
-%__cp plugin/updates/75-deskprofile.update %buildroot/%_datadir/ipa/updates 
-#%__cp plugin/ui/deskprofile.js %buildroot/%_datadir/ipa/ui/js/plugins/deskprofile
+%__cp plugin/etc/ipa/fleetcommander.conf %buildroot/%{_sysconfdir}/ipa/
+sitelibs=%{ipa_python2_sitelib}
+%if 0%{?fedora} > 26 || 0%{?rhel} > 7
+sitelibs="$sitelibs %{ipa_python3_sitelib}"
+%endif
+
+for s in $sitelibs ; do
+	%__mkdir_p %buildroot/$s/ipaclient/plugins
+	%__mkdir_p %buildroot/$s/ipaserver/plugins
+
+	for i in ipaclient ipaserver ; do
+		for j in $(find plugin/$i/plugins -name '*.py') ; do
+			%__cp $j %buildroot/$s/$i/plugins
+		done
+	done
+done
+
+for j in $(find plugin/schema.d -name '*.ldif') ; do
+	%__cp $j %buildroot/%_datadir/ipa/schema.d
+done
+
+for j in $(find plugin/updates -name '*.update') ; do
+	%__cp $j %buildroot/%_datadir/ipa/updates
+done
+
+# Do not package web UI plugin yet
+#for j in $(find plugin/ui/%{plugin_name} -name '*.js') ; do
+#	%__cp $j %buildroot/%_datadir/ipa/js/plugins/%{plugin_name}
+#done
 
 %posttrans
-python2 -c "import sys; from ipaserver.install import installutils; sys.exit(0 if installutils.is_ipa_configured() else 1);" > /dev/null 2>&1
+%if 0%{?fedora} > 26 || 0%{?rhel} > 7
+ipa_interp=python3
+%else
+ipa_interp=python2
+%endif
+$ipa_interp -c "import sys; from ipaserver.install import installutils; sys.exit(0 if installutils.is_ipa_configured() else 1);" > /dev/null 2>&1
 
 if [ $? -eq 0 ]; then
     # This must be run in posttrans so that updates from previous
@@ -58,18 +151,36 @@ fi
 %files
 %license COPYING
 %doc plugin/Feature.mediawiki
-%python2_sitelib/ipaclient/plugins/*
-%python2_sitelib/ipaserver/plugins/*
+%{_sysconfdir}/ipa/fleetcommander.conf
 %_datadir/ipa/schema.d/*
 %_datadir/ipa/updates/*
 #%_datadir/ipa/ui/js/plugins/deskprofile/*
 
+%files -n python2-ipa-%{plugin_name}-client
+%ipa_python2_sitelib/ipaclient/plugins/*
+
+%files -n python2-ipa-%{plugin_name}-server
+%ipa_python2_sitelib/ipaserver/plugins/*
+
+%if 0%{?fedora} > 26 || 0%{?rhel} > 7
+%files -n python2-ipa-%{plugin_name}-client
+%ipa_python2_sitelib/ipaclient/plugins/*
+
+%files -n python2-ipa-%{plugin_name}-server
+%ipa_python2_sitelib/ipaserver/plugins/*
+%endif
+
 %changelog
+* Fri Nov 17 2017 Alexander Bokovoy <abokovoy@redhat.com> 0.0.6-1
+- Allow loading JSON data from files only in interactive mode
+- Package Python2 and Python3 versions separately
+- Package client and server side separately
+
 * Wed Feb  8 2017 Alexander Bokovoy <abokovoy@redhat.com> 0.0.4-1
 - New release
 - Added global desktop profile policy
 
-* Tue Nov  2 2016 Alexander Bokovoy <abokovoy@redhat.com> 0.0.2-1
+* Wed Nov  2 2016 Alexander Bokovoy <abokovoy@redhat.com> 0.0.2-1
 - New release
 
 * Tue Nov  1 2016 Fabiano Fidêncio <fidencio@redhat.com> 0.0.1-2
