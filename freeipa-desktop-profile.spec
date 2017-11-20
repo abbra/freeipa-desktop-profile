@@ -105,27 +105,27 @@ sitelibs="$sitelibs %{ipa_python3_sitelib}"
 %endif
 
 for s in $sitelibs ; do
-	%__mkdir_p %buildroot/$s/ipaclient/plugins
-	%__mkdir_p %buildroot/$s/ipaserver/plugins
+    %__mkdir_p %buildroot/$s/ipaclient/plugins
+    %__mkdir_p %buildroot/$s/ipaserver/plugins
 
-	for i in ipaclient ipaserver ; do
-		for j in $(find plugin/$i/plugins -name '*.py') ; do
-			%__cp $j %buildroot/$s/$i/plugins
-		done
-	done
+    for i in ipaclient ipaserver ; do
+        for j in $(find plugin/$i/plugins -name '*.py') ; do
+            %__cp $j %buildroot/$s/$i/plugins
+        done
+    done
 done
 
 for j in $(find plugin/schema.d -name '*.ldif') ; do
-	%__cp $j %buildroot/%_datadir/ipa/schema.d
+    %__cp $j %buildroot/%_datadir/ipa/schema.d
 done
 
 for j in $(find plugin/updates -name '*.update') ; do
-	%__cp $j %buildroot/%_datadir/ipa/updates
+    %__cp $j %buildroot/%_datadir/ipa/updates
 done
 
 # Do not package web UI plugin yet
 #for j in $(find plugin/ui/%{plugin_name} -name '*.js') ; do
-#	%__cp $j %buildroot/%_datadir/ipa/js/plugins/%{plugin_name}
+#    %__cp $j %buildroot/%_datadir/ipa/js/plugins/%{plugin_name}
 #done
 
 %posttrans
