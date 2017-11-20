@@ -157,7 +157,7 @@ fi
 %{_sysconfdir}/ipa/fleetcommander.conf
 %_datadir/ipa/schema.d/*
 %_datadir/ipa/updates/*
-#%_datadir/ipa/ui/js/plugins/deskprofile/*
+#_datadir/ipa/ui/js/plugins/deskprofile/*
 
 %files -n python2-ipa-%{plugin_name}-client
 %ipa_python2_sitelib/ipaclient/plugins/*
