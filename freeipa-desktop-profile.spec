@@ -8,8 +8,10 @@
 
 Name:           freeipa-%{plugin_name}
 Version:        0.0.6
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        FleetCommander integration with FreeIPA
+
+BuildArch:      noarch
 
 License:        GPL
 URL:            https://github.com/abbra/freeipa-desktop-profile
@@ -19,6 +21,7 @@ Source0:        freeipa-desktop-profile-%{version}.tar.gz
 BuildRequires: python3-devel
 BuildRequires: python3-ipaserver >= 4.6.0
 %endif
+
 BuildRequires:  python2-devel
 BuildRequires:  python2-ipaserver >= 4.4.1
 
@@ -65,7 +68,7 @@ Summary: Server side of FleetCommander integration with FreeIPA for Python 3
 License:        GPL
 Requires: python3-ipaserver
 
-%description  -n python2-ipa-%{plugin_name}-server
+%description  -n python3-ipa-%{plugin_name}-server
 A module for FreeIPA to allow managing desktop profiles defined
 by the FleetCommander. This package adds server-side support for Python 3
 version of FreeIPA
@@ -75,7 +78,7 @@ License:        GPL
 Summary: Client side of FleetCommander integration with FreeIPA for Python 3
 Requires: python3-ipaclient
 
-%description  -n python2-ipa-%{plugin_name}-server
+%description  -n python3-ipa-%{plugin_name}-client
 A module for FreeIPA to allow managing desktop profiles defined
 by the FleetCommander. This package adds client-side support for Python 3
 version of FreeIPA
@@ -163,14 +166,17 @@ fi
 %ipa_python2_sitelib/ipaserver/plugins/*
 
 %if 0%{?fedora} > 26 || 0%{?rhel} > 7
-%files -n python2-ipa-%{plugin_name}-client
-%ipa_python2_sitelib/ipaclient/plugins/*
+%files -n python3-ipa-%{plugin_name}-client
+%ipa_python3_sitelib/ipaclient/plugins/*
 
-%files -n python2-ipa-%{plugin_name}-server
-%ipa_python2_sitelib/ipaserver/plugins/*
+%files -n python3-ipa-%{plugin_name}-server
+%ipa_python3_sitelib/ipaserver/plugins/*
 %endif
 
 %changelog
+* Mon Nov 20 2017 Oliver Gutierrez <ogutierrez@redhat.com> 0.0.6-2
+- Fixed errors in specfile
+
 * Fri Nov 17 2017 Alexander Bokovoy <abokovoy@redhat.com> 0.0.6-1
 - Allow loading JSON data from files only in interactive mode
 - Package Python2 and Python3 versions separately
