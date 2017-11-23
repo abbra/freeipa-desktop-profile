@@ -42,6 +42,14 @@ Requires: python2-ipa-%{plugin_name}-client
 A module for FreeIPA to allow managing desktop profiles defined
 by the FleetCommander.
 
+%package -n freeipa-%{plugin_name}-common
+Summary: Common package for client side FleetCommander integration with FreeIPA
+License:        GPL
+
+%description  -n freeipa-%{plugin_name}-common
+A module for FreeIPA to allow managing desktop profiles defined
+by the FleetCommander. This package adds common files needed by client-side packages
+
 %package -n python2-ipa-%{plugin_name}-server
 Summary: Server side of FleetCommander integration with FreeIPA for Python 2
 License:        GPL
@@ -56,6 +64,7 @@ version of FreeIPA
 License:        GPL
 Summary: Client side of FleetCommander integration with FreeIPA for Python 2
 Requires: python2-ipaclient
+Requires: freeipa-%{plugin_name}-common
 
 %description  -n python2-ipa-%{plugin_name}-client
 A module for FreeIPA to allow managing desktop profiles defined
@@ -77,6 +86,7 @@ version of FreeIPA
 License:        GPL
 Summary: Client side of FleetCommander integration with FreeIPA for Python 3
 Requires: python3-ipaclient
+Requires: freeipa-%{plugin_name}-common
 
 %description  -n python3-ipa-%{plugin_name}-client
 A module for FreeIPA to allow managing desktop profiles defined
@@ -154,10 +164,12 @@ fi
 %files
 %license COPYING
 %doc plugin/Feature.mediawiki
-%{_sysconfdir}/ipa/fleetcommander.conf
 %_datadir/ipa/schema.d/*
 %_datadir/ipa/updates/*
 #_datadir/ipa/ui/js/plugins/deskprofile/*
+
+%files -n freeipa-%{plugin_name}-common
+%{_sysconfdir}/ipa/fleetcommander.conf
 
 %files -n python2-ipa-%{plugin_name}-client
 %ipa_python2_sitelib/ipaclient/plugins/*
@@ -174,6 +186,9 @@ fi
 %endif
 
 %changelog
+* Thu Nov 23 2017 Oliver Gutierrez <ogutierrez@redhat.com> 0.0.6-3
+- Moved context configuration file to a common package for client side packages
+
 * Mon Nov 20 2017 Oliver Gutierrez <ogutierrez@redhat.com> 0.0.6-2
 - Fixed errors in specfile
 
