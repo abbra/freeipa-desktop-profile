@@ -8,7 +8,7 @@
 
 Name:           freeipa-%{plugin_name}
 Version:        0.0.6
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        FleetCommander integration with FreeIPA
 
 BuildArch:      noarch
