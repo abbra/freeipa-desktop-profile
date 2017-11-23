@@ -8,7 +8,7 @@
 
 Name:           freeipa-%{plugin_name}
 Version:        0.0.6
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        FleetCommander integration with FreeIPA
 
 BuildArch:      noarch
@@ -192,6 +192,9 @@ fi
 %endif
 
 %changelog
+* Thu Nov 23 2017 Oliver Gutierrez <ogutierrez@redhat.com> 0.0.6-4
+- Fixed dependencies for EPEL 7
+
 * Thu Nov 23 2017 Oliver Gutierrez <ogutierrez@redhat.com> 0.0.6-3
 - Moved context configuration file to a common package for client side packages
 
