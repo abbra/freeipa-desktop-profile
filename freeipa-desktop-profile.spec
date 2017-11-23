@@ -22,10 +22,16 @@ BuildRequires: python3-devel
 BuildRequires: python3-ipaserver >= 4.6.0
 %endif
 
-BuildRequires:  python2-devel
-BuildRequires:  python2-ipaserver >= 4.4.1
 
-Requires:       ipa-server-common >= 4.4.1
+%if 0%{?rhel}
+BuildRequires: python2-devel
+BuildRequires: python2-ipaserver >= 4.6.0
+Requires:      ipa-server-common >= 4.4.1
+%else
+BuildRequires:  python2-devel
+BuildRequires:  python2-ipaserver >= 4.4.0
+Requires:       ipa-server-common >= 4.4.0
+%endif
 
 # In Fedora 27 we have FreeIPA using Python 3, enforce that
 %if 0%{?fedora} > 26 || 0%{?rhel} > 7
