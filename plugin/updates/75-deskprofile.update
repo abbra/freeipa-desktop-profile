@@ -29,3 +29,9 @@ default: objectClass: cosIndirectDefinition
 default: cosIndirectSpecifier: ipaDeskProfileTarget
 default: cosAttribute: ipaDeskData override
 
+dn: cn=FleetCommander Desktop Profile Administrators,cn=roles,cn=accounts,$SUFFIX
+default:objectClass: groupofnames
+default:objectClass: nestedgroup
+default:objectClass: top
+default:cn: FleetCommander Desktop Profile Administrators
+default:description: Responsible for managing desktop profiles
