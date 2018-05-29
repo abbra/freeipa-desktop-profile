@@ -7,8 +7,8 @@
 %endif
 
 Name:           freeipa-%{plugin_name}
-Version:        0.0.6
-Release:        4%{?dist}
+Version:        0.0.7
+Release:        1%{?dist}
 Summary:        FleetCommander integration with FreeIPA
 
 BuildArch:      noarch
@@ -192,6 +192,10 @@ fi
 %endif
 
 %changelog
+* Mon May 21 2018 Alexander Bokovoy <abokovoy@redhat.com> 0.0.7-1
+- Add a default role 'FleetCommander Desktop Profile Administrators'
+  during upgrade
+
 * Thu Nov 23 2017 Oliver Gutierrez <ogutierrez@redhat.com> 0.0.6-4
 - Fixed dependencies for EPEL 7
 
