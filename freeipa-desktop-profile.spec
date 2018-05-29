@@ -7,7 +7,7 @@
 %endif
 
 Name:           freeipa-%{plugin_name}
-Version:        0.0.7
+Version:        0.0.8
 Release:        1%{?dist}
 Summary:        FleetCommander integration with FreeIPA
 
@@ -192,6 +192,10 @@ fi
 %endif
 
 %changelog
+* Tue May 29 2018 Alexander Bokovoy <abokovoy@redhat.com> 0.0.8-1
+- Add a default privilege 'FleetCommander Desktop Profile Administrators'
+  during upgrade
+
 * Mon May 21 2018 Alexander Bokovoy <abokovoy@redhat.com> 0.0.7-1
 - Add a default role 'FleetCommander Desktop Profile Administrators'
   during upgrade

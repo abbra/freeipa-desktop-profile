@@ -29,9 +29,20 @@ default: objectClass: cosIndirectDefinition
 default: cosIndirectSpecifier: ipaDeskProfileTarget
 default: cosAttribute: ipaDeskData override
 
+############################################
+# Add the default privileges and roles
+############################################
 dn: cn=FleetCommander Desktop Profile Administrators,cn=roles,cn=accounts,$SUFFIX
 default:objectClass: groupofnames
 default:objectClass: nestedgroup
 default:objectClass: top
 default:cn: FleetCommander Desktop Profile Administrators
 default:description: Responsible for managing desktop profiles
+
+dn: cn=FleetCommander Desktop Profile Administrators,cn=privileges,cn=pbac,$SUFFIX
+default:objectClass: top
+default:objectClass: groupofnames
+default:objectClass: nestedgroup
+default:cn: FleetCommander Desktop Profile Administrators
+default:description: FleetCommander Desktop Profile Administrators
+default:member: cn=FleetCommander Desktop Profile Administrators,cn=roles,cn=accounts,$SUFFIX
