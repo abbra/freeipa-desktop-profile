@@ -8,7 +8,7 @@
 
 Name:           freeipa-%{plugin_name}
 Version:        0.0.8
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        FleetCommander integration with FreeIPA
 
 BuildArch:      noarch
@@ -29,11 +29,11 @@ BuildRequires: python2-ipaserver >= 4.4.0
 Requires:      ipa-server-common >= 4.4.0
 %else
 BuildRequires:  python2-devel
-BuildRequires:  python2-ipaserver >= 4.6.0
 Requires:       ipa-server-common >= 4.4.1
 %endif
 
 # In Fedora 27 we have FreeIPA using Python 3, enforce that
+# For FleetCommander also we provide Python 2 client
 %if 0%{?fedora} > 26 || 0%{?rhel} > 7
 Requires(post): python3-ipa-%{plugin_name}-server
 Requires: python3-ipa-%{plugin_name}-server
@@ -56,6 +56,7 @@ License:        GPL
 A module for FreeIPA to allow managing desktop profiles defined
 by the FleetCommander. This package adds common files needed by client-side packages
 
+%if 0%{?fedora} < 28 || 0%{?rhel} == 7
 %package -n python2-ipa-%{plugin_name}-server
 Summary: Server side of FleetCommander integration with FreeIPA for Python 2
 License:        GPL
@@ -65,7 +66,9 @@ Requires: python2-ipaserver
 A module for FreeIPA to allow managing desktop profiles defined
 by the FleetCommander. This package adds server-side support for Python 2
 version of FreeIPA
+%endif
 
+%if 0%{?fedora} > 26 || 0%{?rhel} == 7
 %package -n python2-ipa-%{plugin_name}-client
 License:        GPL
 Summary: Client side of FleetCommander integration with FreeIPA for Python 2
@@ -76,6 +79,7 @@ Requires: freeipa-%{plugin_name}-common
 A module for FreeIPA to allow managing desktop profiles defined
 by the FleetCommander. This package adds client-side support for Python 2
 version of FreeIPA
+%endif
 
 %if 0%{?fedora} > 26 || 0%{?rhel} > 7
 %package -n python3-ipa-%{plugin_name}-server
@@ -115,21 +119,32 @@ rm -rf $RPM_BUILD_ROOT
 #%__mkdir_p %buildroot/%_datadir/ipa/ui/js/plugins/deskprofile
 
 %__cp plugin/etc/ipa/fleetcommander.conf %buildroot/%{_sysconfdir}/ipa/
-sitelibs=%{ipa_python2_sitelib}
+sitelib2=%{ipa_python2_sitelib}
+sitelib3=
+targets2="ipaclient ipaserver"
 %if 0%{?fedora} > 26 || 0%{?rhel} > 7
-sitelibs="$sitelibs %{ipa_python3_sitelib}"
+sitelib3="%{ipa_python3_sitelib}"
+targets2="ipaclient"
+targets3="ipaclient ipaserver"
 %endif
 
-for s in $sitelibs ; do
-    %__mkdir_p %buildroot/$s/ipaclient/plugins
-    %__mkdir_p %buildroot/$s/ipaserver/plugins
-
-    for i in ipaclient ipaserver ; do
-        for j in $(find plugin/$i/plugins -name '*.py') ; do
-            %__cp $j %buildroot/$s/$i/plugins
+if [ -n "$sitelib2" ] ; then
+    for s in $targets2 ; do
+        %__mkdir_p %buildroot/$sitelib2/$s/plugins
+        for j in $(find plugin/$s/plugins -name '*.py') ; do
+            %__cp $j %buildroot/$sitelib2/$s/plugins
         done
     done
-done
+fi
+
+if [ -n "$sitelib3" ] ; then
+    for s in $targets3 ; do
+        %__mkdir_p %buildroot/$sitelib3/$s/plugins
+        for j in $(find plugin/$s/plugins -name '*.py') ; do
+            %__cp $j %buildroot/$sitelib3/$s/plugins
+        done
+    done
+fi
 
 for j in $(find plugin/schema.d -name '*.ldif') ; do
     %__cp $j %buildroot/%_datadir/ipa/schema.d
@@ -177,11 +192,15 @@ fi
 %files -n freeipa-%{plugin_name}-common
 %{_sysconfdir}/ipa/fleetcommander.conf
 
+%if 0%{?fedora} > 26 || 0%{?rhel} == 7
 %files -n python2-ipa-%{plugin_name}-client
 %ipa_python2_sitelib/ipaclient/plugins/*
+%endif
 
+%if 0%{?fedora} < 28 || 0%{?rhel} == 7
 %files -n python2-ipa-%{plugin_name}-server
 %ipa_python2_sitelib/ipaserver/plugins/*
+%endif
 
 %if 0%{?fedora} > 26 || 0%{?rhel} > 7
 %files -n python3-ipa-%{plugin_name}-client
@@ -192,6 +211,9 @@ fi
 %endif
 
 %changelog
+* Sun Jul 22 2018 Alexander Bokovoy <abokovoy@redhat.com> 0.0.8-2
+- Do not ship python2-ipa-deskprofile-server for Fedora 29 or later
+
 * Tue May 29 2018 Alexander Bokovoy <abokovoy@redhat.com> 0.0.8-1
 - Add a default privilege 'FleetCommander Desktop Profile Administrators'
   during upgrade
