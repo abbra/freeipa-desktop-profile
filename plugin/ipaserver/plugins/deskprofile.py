@@ -226,7 +226,7 @@ class deskprofile_del(LDAPDelete):
 class deskprofile_mod(LDAPUpdate):
     __doc__ = _('Modify a Desktop Profile.')
 
-    msg_summary = _('Modified Desktop Profile"%(value)s"')
+    msg_summary = _('Modified Desktop Profile "%(value)s"')
 
 
 
