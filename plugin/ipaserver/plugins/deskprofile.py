@@ -141,8 +141,7 @@ class deskprofile(LDAPObject):
         'cn', 'description',
     ]
     uuid_attribute = 'ipauniqueid'
-    rdn_is_primary_key = True
-
+    allow_rename = True
     managed_permissions = {
         'System: Read FleetCommander Desktop Profile': {
             'ipapermbindruletype': 'all',
@@ -263,7 +262,7 @@ class deskprofilerule(LDAPObject):
         'seealso',
     ]
     uuid_attribute = 'ipauniqueid'
-    rdn_is_primary_key = True
+    allow_rename = True
     attribute_members = {
         'memberuser': ['user', 'group'],
         'memberhost': ['host', 'hostgroup'],
